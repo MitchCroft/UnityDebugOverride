@@ -299,7 +299,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   flagDontDestroyOnLoad: 1
-  overrideType: UnityDebugOverride.Example.BlacklistedDebugLogger, Assembly-CSharp
+  usePreviousLogHandler: 1
+  overrideType: UnityDebugOverride.ALoggerObject, Assembly-CSharp
   objectReference: {fileID: 11400000, guid: 2103aa7bf94ee4e43908699653bb43be, type: 2}
 --- !u!4 &1626381610
 Transform:

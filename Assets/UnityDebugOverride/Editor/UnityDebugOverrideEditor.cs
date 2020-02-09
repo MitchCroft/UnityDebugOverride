@@ -55,13 +55,14 @@ namespace UnityDebugOverride {
         /// Store a reference to the properties for the main data elements that can be set for this overrider
         /// </summary>
         private SerializedProperty dontDestroyProp,
+                                   usePrevProp,
                                    typeProp,
                                    objProp;
 
         private GUIContent baseHeading,
                            overrideLabel,
                            noOptionsLabel,
-                           scriptableObjHeading,
+                           objectsHeading,
                            objectRefLabel;
 
         /*----------Functions----------*/
@@ -108,6 +109,7 @@ namespace UnityDebugOverride {
         private void EstablishNonSerializable() {
             //Get the serialised property references needed for display
             dontDestroyProp = serializedObject.FindProperty("flagDontDestroyOnLoad");
+            usePrevProp = serializedObject.FindProperty("usePreviousLogHandler");
             typeProp = serializedObject.FindProperty("overrideType");
             objProp = serializedObject.FindProperty("objectReference");
 
@@ -115,7 +117,7 @@ namespace UnityDebugOverride {
             baseHeading = new GUIContent("Override Settings");
             overrideLabel = new GUIContent("Override Type", typeProp.tooltip);
             noOptionsLabel = new GUIContent("No ILogger types available");
-            scriptableObjHeading = new GUIContent("Scriptable Object Options");
+            objectsHeading = new GUIContent("Override Object Options");
             objectRefLabel = new GUIContent("Object Reference", objProp.tooltip);
         }
 
@@ -129,6 +131,9 @@ namespace UnityDebugOverride {
             if (dontDestroyProp == null)
                 EstablishNonSerializable();
 
+            //Draw the default script field to the inspector
+            DrawDefaultInspector();
+
             //Update the stored properties with the latest information
             serializedObject.UpdateIfRequiredOrScript();
 
@@ -138,6 +143,13 @@ namespace UnityDebugOverride {
             //Display the basic loading settings that are needed
             EditorGUILayout.LabelField(baseHeading, EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(dontDestroyProp, true);
+            EditorGUILayout.PropertyField(usePrevProp, true);
+
+            //Add some buffer space between the sections
+            EditorGUILayout.Space();
+
+            //Display additional options for Scriptable Objects
+            EditorGUILayout.LabelField(objectsHeading, EditorStyles.boldLabel);
 
             //Get the index of the type that has currently been assigned to the object
             int curInd = (TYPE_TO_INDEX.ContainsKey(typeProp.stringValue) ? TYPE_TO_INDEX[typeProp.stringValue] : -1);
@@ -161,6 +173,9 @@ namespace UnityDebugOverride {
 
                     //Clear the cached editor reference
                     cachedEditor = null;
+
+                    //Clear any previous object reference
+                    objProp.objectReferenceValue = null;
                 }
 
                 //Get the type object that is being modified
@@ -171,15 +186,8 @@ namespace UnityDebugOverride {
 
                 //Check if this is a scriptable object for the creation field
                 if (currentType != null && SCRIPTABLE_OBJ_TYPE.IsAssignableFrom(currentType)) {
-                    //Add some buffer space between the sections
-                    EditorGUILayout.Space();
-
-                    //Display additional options for Scriptable Objects
-                    EditorGUILayout.LabelField(scriptableObjHeading, EditorStyles.boldLabel);
-
                     //Have the field appear as a single line
-                    EditorGUILayout.BeginHorizontal();
-                    {
+                    EditorGUILayout.BeginHorizontal(); {
                         //Display a foldout option for displaying the scriptable object values
                         if (objProp.objectReferenceValue != null) {
                             displayAssetValues =
@@ -226,8 +234,7 @@ namespace UnityDebugOverride {
                                 EditorGUIUtility.PingObject(obj);
                             }
                         }
-                    }
-                    EditorGUILayout.EndHorizontal();
+                    } EditorGUILayout.EndHorizontal();
                 }
 
                 //Check if changes were made

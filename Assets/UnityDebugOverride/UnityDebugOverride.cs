@@ -76,13 +76,16 @@ namespace UnityDebugOverride {
 
         //VISIBLE
 
-        [SerializeField, Tooltip("Flags if the GameObject attached to this object should be flagged as Don't Destroy on Load")]
+        [SerializeField, HideInInspector, Tooltip("Flags if the GameObject attached to this object should be flagged as Don't Destroy on Load")]
         private bool flagDontDestroyOnLoad = true;
 
-        [SerializeField, Tooltip("The type of the object that should be instantiated to be used as an override to the default debugger")]
+        [SerializeField, HideInInspector, Tooltip("Flags if the previous Log Handler object in the stack should be used by the new instantiated object")]
+        private bool usePreviousLogHandler = true;
+
+        [SerializeField, HideInInspector, Tooltip("The type of the object that should be instantiated to be used as an override to the default debugger")]
         private string overrideType = string.Empty;
 
-        [SerializeField, Tooltip("An object reference that will be used to hold a reference to a Scriptable Object (if the defined type derives from it)")]
+        [SerializeField, HideInInspector, Tooltip("An object reference that will be used to hold a reference to a Scriptable Object (if the defined type derives from it)")]
         private UnityEngine.Object objectReference;
 
         //PUBLIC
@@ -169,9 +172,33 @@ namespace UnityDebugOverride {
             //Remove the entry from the stack
             activationStack.RemoveAt(ind);
 
-            //Update the assigned logger stack
-            UpdateAssignedLoggerInstance();
+            //If this was the last object on the stack, update the active instance
+            if (ind == activationStack.Count) UpdateAssignedLoggerInstance();
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Handle modified inspector values to assign required references while the application is running
+        /// </summary>
+        private void OnValidate() {
+            if (Application.isPlaying && isActiveAndEnabled) {
+                //Look for this objects instance on the activation stack
+                int ind = activationStack.FindIndex(x => x.overrider == this);
+
+                //If nothing could be found then that's a problem that shouldn't happen
+                if (ind == -1) throw new InvalidOperationException(string.Format("Unity Debug Override was unable to find it's override instance on the Activation Stack"));
+
+                //Update the logger instance on the activation stack
+                OverridePair over = activationStack[ind];
+                over.instance = GetLogger();
+                activationStack[ind] = over;
+
+                //If this object is the latest on the stack, update the active index
+                if (ind == activationStack.Count - 1)
+                    UpdateAssignedLoggerInstance();
+            }
+        }
+#endif
 
         /// <summary>
         /// Retrieve the Logger object that will be used as the Logger for this object
@@ -188,27 +215,156 @@ namespace UnityDebugOverride {
             //Check that the type is valid for use
             if (!IsTypeUsable(loggerType)) return null;
 
+            //Store a reference to the ILogger object that will be used
+            ILogger instance = null;
+
             //If this Scriptable Object, use the object reference
             if (SCRIPTABLE_OBJ_TYPE.IsAssignableFrom(loggerType))
-                return objectReference as ILogger;
+                instance = objectReference as ILogger;
 
             //Otherwise, try to instantiate a Logger that can be used
             else {
                 try {
                     //Check to see if there is a Log handler constructor that should be used
-                    if (loggerType.GetConstructor(CONSTRUCTOR_BINDING_FLAGS, null, LOG_HANDLER_CONSTRUCTOR_PARAMS, null) != null)
-                        return (ILogger)Activator.CreateInstance(loggerType, Debug.unityLogger.logHandler);
+                    if (loggerType.GetConstructor(CONSTRUCTOR_BINDING_FLAGS, null, LOG_HANDLER_CONSTRUCTOR_PARAMS, null) != null) 
+                        instance = (ILogger)Activator.CreateInstance(loggerType, (ILogHandler)DEFAULT_LOGGER.logHandler);
 
                     //Otherwise, use the default constructor
-                    return (ILogger)Activator.CreateInstance(loggerType);
+                    else instance = (ILogger)Activator.CreateInstance(loggerType);
                 } catch (Exception exec) {
                     Debug.LogErrorFormat(this, "Failed to create a Debug Override instance of '{0}'. ERROR: {1}", loggerType.FullName, exec);
                     return null;
                 }
             }
+
+            //Check if the previous Log Handler should be assigned
+            if (instance != null && usePreviousLogHandler) {
+                //Find the starting index that will be searched back from
+                int prog = activationStack.FindIndex(x => x.overrider == this);
+                prog = (prog == -1 ? activationStack.Count - 1 : prog - 1);
+
+                //Look for the next active Logger that can be used to supply the log handler
+                for (; prog >= 0; --prog) {
+                    if (activationStack[prog].instance != null)
+                        break;
+                }
+
+                //Get the logger that is being used
+                ILogger logger = (prog > -1 ?
+                    activationStack[prog].instance :
+                    DEFAULT_LOGGER
+                );
+
+                //Assign the previous Log Handler to the new instance
+                instance.logHandler = logger.logHandler;
+            }
+
+            //Return the found interface
+            return instance;
         }
 
         //PUBLIC
+
+        /// <summary>
+        /// Assign the override type to be used by this object to override the Debug Logging functionality
+        /// </summary>
+        /// <param name="objectType">The object type that should be used as the override (This object must implement ILogger)</param>
+        /// <param name="usePreviousLogHandler">Flags if the previous object in the stacks ILogHandler instance should be assigned to the new instance</param>
+        /// <returns>Returns true if the object is able to be used and is assigned correctly</returns>
+        /// <remarks>
+        /// Types that have a ILogHandler Constructor will be initialised with the default Unity ILogHandler. Use 'useCurrentPreviousLogHandler'
+        /// to carry across the ILogHandler object from before it on the stack
+        /// 
+        /// For Scriptable Objects implementing ILogger, use the <see cref="AssignOverrideObject{T}(T, bool)"/> function
+        /// </remarks>
+        public bool AssignOverrideType(Type objectType, bool usePreviousLogHandler) {
+            //Check that the type can be used
+            if (!IsTypeUsable(objectType)) return false;
+
+            //If this type is a Scriptable Object direct the caller to the correct function
+            if (SCRIPTABLE_OBJ_TYPE.IsAssignableFrom(objectType))
+                throw new ArgumentException(string.Format("UnityDebugOverride.AssignOverrideType(Type, bool) can't accept the type '{0}', as it is a Scriptable Object. Use UnityDebugOverride.AssignOverrideObject(T, bool) instead", objectType.FullName));
+
+            //Assign the updated values for this object
+            this.usePreviousLogHandler = usePreviousLogHandler;
+            overrideType = MinifyTypeAssemblyName(objectType);
+            objectReference = null;
+
+            //If this is at runtime, the instance may need to be updated
+            if (
+#if UNITY_EDITOR
+                Application.isPlaying &&
+#endif
+                isActiveAndEnabled
+                ) {
+                //Look for this objects instance on the activation stack
+                int ind = activationStack.FindIndex(x => x.overrider == this);
+
+                //If nothing could be found then that's a problem that shouldn't happen
+                if (ind == -1) throw new InvalidOperationException(string.Format("Unity Debug Override was unable to find it's override instance on the Activation Stack"));
+
+                //Update the logger instance on the activation stack
+                OverridePair over = activationStack[ind];
+                over.instance = GetLogger();
+                activationStack[ind] = over;
+
+                //If this object is the latest on the stack, update the active index
+                if (ind == activationStack.Count - 1)
+                    UpdateAssignedLoggerInstance();
+            }
+
+            //If got this far, success
+            return true;
+        }
+
+        /// <summary>
+        /// Assign the override object to be used by this object to override the Debug Logging functionality
+        /// </summary>
+        /// <typeparam name="T">The type of object that is to be used by this object to override</typeparam>
+        /// <param name="overrideAsset">The asset that will represent this Override object on the override stack</param>
+        /// <param name="usePreviousLogHandler">Flags if the previous object in the stacks ILogHandler instance should be assigned to the new instance</param>
+        /// <returns>Returns true if the object is able to be used and is assigned correctly</returns>
+        /// <remarks>
+        /// Objects assigned that don't apply 'useCurrentPreviousLogHandler' are responsible for assigning their own ILogHandler instance
+        /// </remarks>
+        public bool AssignOverrideObject<T>(T overrideAsset, bool usePreviousLogHandler) where T : ScriptableObject, ILogger {
+            //Get the type that is be assigned
+            Type type = typeof(T);
+
+            //Check that the type can be used
+            if (!IsTypeUsable(type)) return false;
+
+            //Assign the updated values for this object
+            this.usePreviousLogHandler = usePreviousLogHandler;
+            overrideType = MinifyTypeAssemblyName(type);
+            objectReference = overrideAsset;
+
+            //If this is at runtime, the instance may need to be updated
+            if (
+#if UNITY_EDITOR
+                Application.isPlaying &&
+#endif
+                isActiveAndEnabled
+                ) {
+                //Look for this objects instance on the activation stack
+                int ind = activationStack.FindIndex(x => x.overrider == this);
+
+                //If nothing could be found then that's a problem that shouldn't happen
+                if (ind == -1) throw new InvalidOperationException(string.Format("Unity Debug Override was unable to find it's override instance on the Activation Stack"));
+
+                //Update the logger instance on the activation stack
+                OverridePair over = activationStack[ind];
+                over.instance = GetLogger();
+                activationStack[ind] = over;
+
+                //If this object is the latest on the stack, update the active index
+                if (ind == activationStack.Count - 1)
+                    UpdateAssignedLoggerInstance();
+            }
+
+            //If got this far, success
+            return true;
+        }
 
         /// <summary>
         /// Process the activation stack to assign the currently active Logger object
@@ -293,7 +449,6 @@ namespace UnityDebugOverride {
 
             //Check that it is a concrete class that can be used
             if (type.IsInterface ||
-                type.IsAbstract ||
                 type.IsGenericType)
                 return false;
 
@@ -310,12 +465,14 @@ namespace UnityDebugOverride {
 
             //All non-scriptable objects need to have a supported constructor
             else {
-                //Check to see if this object has a constructor that takes a LogHandler
-                if (type.GetConstructor(CONSTRUCTOR_BINDING_FLAGS, null, LOG_HANDLER_CONSTRUCTOR_PARAMS, null) != null)
-                    return true;
+                //Don't allow abstract basic class objects (Abstract base type of Scriptable Objects are fine, they don't have to be dynamically instantiated)
+                if (type.IsAbstract) return false;
 
-                //Otherwise, this object must have a default constructor
-                return (type.GetConstructor(CONSTRUCTOR_BINDING_FLAGS, null, Type.EmptyTypes, null) != null);
+                //Check to see if this object has a default or ILogHandler constructor that takes a LogHandler
+                return (
+                    type.GetConstructor(CONSTRUCTOR_BINDING_FLAGS, null, Type.EmptyTypes, null) != null ||
+                    type.GetConstructor(CONSTRUCTOR_BINDING_FLAGS, null, LOG_HANDLER_CONSTRUCTOR_PARAMS, null) != null
+                );
             }
         }
     }
