@@ -90,6 +90,9 @@ namespace UnityDebugOverride {
                 }
             }
 
+            //Do a basic sort of the found types so they are in a somewhat alphabetical order
+            usable.Sort((l, r) => l.FullName.CompareTo(r.FullName));
+
             //Create the final containers
             USABLE_TYPES = new Type[usable.Count];
             TYPE_TO_INDEX = new Dictionary<string, int>(usable.Count);
