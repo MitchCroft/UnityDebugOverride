@@ -90,16 +90,15 @@ namespace UnityDebugOverride.Example {
         /// <param name="format">A composite format string</param>
         /// <param name="args">Arguments to be inserted into the format</param>
         protected override void ProcessLog(LogType logType, UnityEngine.Object context, string format, params object[] args) {
-            //Check to see if the message needs to be compiled
-            if (args != null && args.Length > 0)
-                format = string.Format(format, args);
-
             //Check to see if the message has been blacklisted
-            if (IsMessageBlacklisted(format))
+            if (IsMessageBlacklisted(args != null && args.Length > 0 ?
+                    string.Format(format, args) :
+                    format
+                ))
                 return;
 
             //Apply the base functionality
-            base.ProcessLog(logType, context, format);
+            base.ProcessLog(logType, context, format, args);
         }
 
         /// <summary>

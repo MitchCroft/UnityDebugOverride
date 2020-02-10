@@ -120,7 +120,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(logType)) return;
 
             //Process the message
-            ProcessLog(logType, null, GetString(message));
+            ProcessLog(logType, null, "{0}", GetString(message));
         }
 
         /// <summary>
@@ -134,7 +134,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(logType)) return;
 
             //Process the message
-            ProcessLog(logType, context, GetString(message));
+            ProcessLog(logType, context, "{0}", GetString(message));
         }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(logType)) return;
 
             //Process the message
-            ProcessLog(logType, null, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(logType, null, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -163,7 +163,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(logType)) return;
 
             //Process the message
-            ProcessLog(logType, context, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(logType, context, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -175,7 +175,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Log)) return;
 
             //Process the message
-            ProcessLog(LogType.Log, null, GetString(message));
+            ProcessLog(LogType.Log, null, "{0}", GetString(message));
         }
 
         /// <summary>
@@ -188,7 +188,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Log)) return;
 
             //Process the message
-            ProcessLog(LogType.Log, null, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(LogType.Log, null, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -202,7 +202,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Log)) return;
 
             //Process the message
-            ProcessLog(LogType.Log, context, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(LogType.Log, context, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -215,7 +215,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Warning)) return;
 
             //Process the message
-            ProcessLog(LogType.Warning, null, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(LogType.Warning, null, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -229,7 +229,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Warning)) return;
 
             //Process the message
-            ProcessLog(LogType.Warning, context, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(LogType.Warning, context, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -242,7 +242,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Error)) return;
 
             //Process the message
-            ProcessLog(LogType.Error, null, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(LogType.Error, null, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
@@ -256,7 +256,7 @@ namespace UnityDebugOverride {
             if (!IsLogTypeAllowed(LogType.Error)) return;
 
             //Process the message
-            ProcessLog(LogType.Error, context, string.Format("{0}: {1}", tag, GetString(message)));
+            ProcessLog(LogType.Error, context, "{0}: {1}", tag, GetString(message));
         }
 
         /// <summary>
