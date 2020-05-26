@@ -19,7 +19,7 @@ namespace UnityDebugOverride.Example {
     /// <summary>
     /// Manage the writing of log messages to the debug console, with the option to blacklist specific messages
     /// </summary>
-    public sealed class BlacklistedLogger : ALoggerObject {
+    public class BlacklistedLogger : ALoggerAsset {
         /*----------Types----------*/
         //PUBLIC
 

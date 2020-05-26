@@ -16,7 +16,7 @@ namespace UnityDebugOverride {
     /// Provide a base level for logger Scriptable Objects to base their functionality off of
     /// </summary>
     /// <remarks>
-    /// This class object is a Scriptable Object port of the UnityEngine.Logger object for use with
+    /// This class object is a <see cref="ScriptableObject"/> port of the <see cref="Logger"/> object for use with
     /// the UnityDebugOverride system. This is intended as a quick start object where people can 
     /// customise the logging behaviour quickly without large amounts of copy/paste boilerplate. 
     /// All messages received via the ILogger interface are forwarded to two functions (ProcessLog 
@@ -25,7 +25,7 @@ namespace UnityDebugOverride {
     /// UnityEngine.Logger.cs accessed 2020-02-09 from
     /// https://github.com/jamesjlinden/unity-decompiled/blob/master/UnityEngine/UnityEngine/Logger.cs
     /// </remarks>
-    public abstract class ALoggerObject : ScriptableObject, ILogger {
+    public abstract class ALoggerAsset : ScriptableObject, ILogger {
         /*----------Variables----------*/
         //VISIBLE
 
@@ -61,7 +61,7 @@ namespace UnityDebugOverride {
         /// <summary>
         /// Assign the default log handler if there is nothing else assigned
         /// </summary>
-        private void OnEnable() { if (logHandler == null) logHandler = UnityDebugOverride.DEFAULT_LOGGER.logHandler; }
+        protected virtual void OnEnable() { if (logHandler == null) logHandler = UnityDebugOverride.DEFAULT_LOGGER.logHandler; }
 
         /// <summary>
         /// Apply the default logging behaviour of the ILogHandler assigned
